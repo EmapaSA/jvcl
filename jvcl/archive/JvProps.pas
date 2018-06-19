@@ -324,16 +324,22 @@ begin
           Def := StoreEnumProperty(PropInfo);
         tkFloat:
           Def := StoreFloatProperty(PropInfo);
+        {$IFDEF WIN32}
         tkWChar:
           Def := StoreWCharProperty(PropInfo);
         tkLString:
           Def := StoreLStringProperty(PropInfo);
-        tkWString:
-          Def := StoreWStringProperty(PropInfo);
+        {$IFNDEF COMPILER3_UP} { - Delphi 2.0, C++Builder 1.0 }
+        tkLWString:
+          Def := StoreLStringProperty(PropInfo);
+        {$ENDIF}
         tkVariant:
           Def := StoreVariantProperty(PropInfo);
+        {$ENDIF WIN32}
+        {$IFDEF COMPILER4_UP}
         tkInt64:
           Def := StoreInt64Property(PropInfo);
+        {$ENDIF}
         tkString:
           Def := StoreStringProperty(PropInfo);
         tkSet:
@@ -344,7 +350,10 @@ begin
         Exit;
       end;
       if (Def <> '') or (PropInfo^.PropType^.Kind in [tkString, tkClass])
-      or (PropInfo^.PropType^.Kind in [tkLString, tkWChar])
+        {$IFDEF WIN32}
+      or (PropInfo^.PropType^.Kind in [tkLString,
+        {$IFNDEF COMPILER3_UP}tkLWString, {$ENDIF}tkWChar])
+        {$ENDIF WIN32}
       then
         S := Trim(ReadString(Section, GetItemName(PropInfo^.Name), Def))
       else
@@ -358,14 +367,22 @@ begin
           LoadEnumProperty(S, PropInfo);
         tkFloat:
           LoadFloatProperty(S, PropInfo);
+        {$IFDEF WIN32}
         tkWChar:
           LoadWCharProperty(S, PropInfo);
         tkLString:
           LoadLStringProperty(S, PropInfo);
+        {$IFNDEF COMPILER3_UP} { - Delphi 2.0, C++Builder 1.0 }
+        tkLWString:
+          LoadLStringProperty(S, PropInfo);
+        {$ENDIF}
         tkVariant:
           LoadVariantProperty(S, PropInfo);
+        {$ENDIF WIN32}
+        {$IFDEF COMPILER4_UP}
         tkInt64:
           LoadInt64Property(S, PropInfo);
+        {$ENDIF}
         tkString:
           LoadStringProperty(S, PropInfo);
         tkSet:

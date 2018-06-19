@@ -319,7 +319,7 @@ uses
   MMSystem,
   ShlObj, CommCtrl,
   JclSysInfo,
-  JclStrings, JclGraphics;
+  JclStrings, JclGraphics, JclAnsiStrings;
 
 resourcestring
   SWin32Error = 'Win32 Error.  Code: %d.'#10'%s';
