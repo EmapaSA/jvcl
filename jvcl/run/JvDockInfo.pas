@@ -269,6 +269,9 @@ begin
       begin
         Form := TJvDockTabHostForm.Create(Application);
         ADockClient := FindDockClient(TJvDockInfoZone(ATreeZone.ChildZone).DockControl);
+        //koku
+        if Assigned(ADockClient.OnTabHostFormCreated) then
+          ADockClient.OnTabHostFormCreated(ADockClient, TJvDockTabHostForm(Form));
         Result := ADockClient.CreateTabDockClass(Form).Parent;
       end;
   end;
@@ -1131,3 +1134,4 @@ finalization
 {$ENDIF UNITVERSIONING}
 
 end.
+

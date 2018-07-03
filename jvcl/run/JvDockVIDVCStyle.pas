@@ -404,6 +404,7 @@ type
     FPanel: TJvDockTabPanel;
     FTempSheet: TJvDockVIDVCTabSheet;
     FTabImageList: TCustomImageList;
+    FBlockUndock : Boolean; //koku
     procedure SetActiveSheetColor(const Value: TColor);
     procedure SetInactiveSheetColor(const Value: TColor);
     procedure SetTabBottomOffset(const Value: Integer);
@@ -463,6 +464,7 @@ type
     property Panel: TJvDockTabPanel read FPanel;
     property TempSheet: TJvDockVIDVCTabSheet read FTempSheet write FTempSheet;
     property VisibleSheetCount: Integer read GetVisibleSheetCount;
+    property BlockUndock : boolean read FBlockUndock write FBlockUndock default false;//koku
   published
     property ActiveSheetColor: TColor read GetActiveSheetColor write SetActiveSheetColor;
     property InactiveSheetColor: TColor read GetInactiveSheetColor write SetInactiveSheetColor;
@@ -577,7 +579,7 @@ uses
   {$IFDEF JVCLThemesEnabled}
   JvThemes,
   {$ENDIF JVCLThemesEnabled}
-  SysUtils, Math, Forms, ExtCtrls,
+  Consts, SysUtils, Math, Forms, ExtCtrls,
   JvDockSupportProc, JvDockGlobals;
 
 type
@@ -629,7 +631,7 @@ begin
             B1 + Round(DB * X));
           if ARect.Right <= ARect.Left + Round((X + 1) * DH) then
             W := ARect.Right
-          else
+            else
             W := ARect.Left + Round((X + 1) * DH);
           FillRect(Classes.Rect(ARect.Left + Round(X * DH), ARect.Top, W, ARect.Bottom))
         end;
@@ -1645,34 +1647,34 @@ begin
   DrawRect := ARect;
   Canvas.Brush.Color := TWinControlAccessProtected(DockSite).Color;
   Canvas.FillRect(DrawRect);
-  case GrabbersPosition of
-    gpLeft:
-      begin
+    case GrabbersPosition of
+      gpLeft:
+        begin
         DrawExpendBotton(ARect.Left + BorderWidth + LeftOffset, ARect.Top + TopOffset + ButtonHeight + ButtonSplitter +
-          BorderWidth);
+            BorderWidth);
         DrawCloseButton(ARect.Left + BorderWidth + LeftOffset, ARect.Top + TopOffset + BorderWidth);
         DrawGrabberLine(ARect.Left + BorderWidth + LeftOffset + 3, ARect.Top + 2 * ButtonHeight + TopOffset + ButtonSplitter +
           BottomOffset + BorderWidth + 3, ARect.Left + BorderWidth + LeftOffset + 5, ARect.Bottom - BorderWidth - 2);
         DrawGrabberLine(ARect.Left + BorderWidth + LeftOffset + 7, ARect.Top + 2 * ButtonHeight + TopOffset + ButtonSplitter +
           BottomOffset + BorderWidth + 3, ARect.Left + BorderWidth + LeftOffset + 9, ARect.Bottom - BorderWidth - 2);
-      end;
-    gpTop:
-      begin
+        end;
+      gpTop:
+        begin
         DrawExpendBotton(ARect.Right - LeftOffset - 2 * ButtonWidth - ButtonSplitter - BorderWidth, ARect.Top + TopOffset +
-          BorderWidth);
+            BorderWidth);
         DrawCloseButton(ARect.Right - LeftOffset - ButtonWidth - BorderWidth, ARect.Top + TopOffset + BorderWidth);
         DrawGrabberLine(ARect.Left + BorderWidth, ARect.Top + BorderWidth + TopOffset + 3, ARect.Right - 2 * ButtonWidth - RightOffset -
           ButtonSplitter - LeftOffset - BorderWidth - 3, ARect.Top + BorderWidth + TopOffset + 5);
         DrawGrabberLine(ARect.Left + BorderWidth, ARect.Top + BorderWidth + TopOffset + 7, ARect.Right - 2 * ButtonWidth - RightOffset -
           ButtonSplitter - LeftOffset - BorderWidth - 3, ARect.Top + BorderWidth + TopOffset + 9);
-      end;
-    gpBottom:
-      begin
-      end;
-    gpRight:
-      begin
-      end;
-  end;
+        end;
+      gpBottom:
+        begin
+        end;
+      gpRight:
+        begin
+        end;
+    end;
 end;
 
 procedure TJvDockVIDVCTree.ResetBounds(Force: Boolean);
@@ -1935,16 +1937,16 @@ begin
       DockRect := Rect(0, 0, DockSite.ClientWidth, DockSite.ClientHeight);
 
       if VisibleClients > 0 then
-        case DropAlign of
-          alLeft:
+          case DropAlign of
+            alLeft:
             DockRect.Right := DockRect.Right div 2;
-          alRight:
+            alRight:
             DockRect.Left := DockRect.Right div 2;
-          alTop:
+            alTop:
             DockRect.Bottom := DockRect.Bottom div 2;
-          alBottom:
+            alBottom:
             DockRect.Top := DockRect.Bottom div 2;
-        end;
+          end;
     end;
   end
   else
@@ -3169,6 +3171,10 @@ var
   AParentForm: TCustomForm;
 begin
   inherited MouseDown(Button, Shift, X, Y);
+    //koku
+  if (ssDouble in Shift) and FPage.BlockUndock then
+    Exit;
+
   if Page = nil then
     Exit;
 
@@ -3715,16 +3721,16 @@ var
   end;
 
 begin
-  if (PageControl is TJvDockVIDVCTabPageControl) and (PageControl <> nil) then
+     if (PageControl is TJvDockVIDVCTabPageControl) and (PageControl <> nil) then
   begin
     TabPanel := TJvDockVIDVCTabPageControl(PageControl).Panel;
     if PageControl.ActivePage = Self then
       TabPanel.Canvas.Font.Assign(TabPanel.Page.ActiveFont)
     else
       TabPanel.Canvas.Font.Assign(TabPanel.Page.InactiveFont);
-    TempWidth := TabPanel.Canvas.TextWidth(
+    TempWidth := TabPanel.Canvas.TextWidth(        
       CaptionStr) + TabPanel.CaptionLeftOffset + TabPanel.CaptionRightOffset;
-    if TempWidth <> FTabWidth then
+    if TempWidth <> FTabWidth then                                            
     begin
       DoSetSheetSort;
       FTabWidth := TempWidth;
@@ -4641,3 +4647,4 @@ finalization
 {$ENDIF UNITVERSIONING}
 
 end.
+

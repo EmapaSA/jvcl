@@ -241,6 +241,26 @@ type
     {$ENDIF JVCLThemesEnabled}
   end;
 
+  type
+  TKDrawEvet = procedure (Sender : TCanvas; Rect : TRect) of object;
+  
+  //Koku
+  TJvkxSlider = class(TJvxSlider)
+  private
+    FBackground : TBitmap;
+    FOwnerDraw : TKDrawEvet;
+    procedure WMEraseBkGnd(var Msg: TWMEraseBkgnd); message WM_ERASEBKGND;
+    //{$IFDEF VCL}
+      procedure WMPaint(var Msg: TWMPaint); message WM_PAINT;
+    //{$ENDIF VCL}
+    procedure DrawTransparency(Canvas:TCanvas; ARect : TRect; Bitmap:TBitmap; Transparency: TColor);
+  public
+    procedure Paint; override;
+    property DrawEvent : TKDrawEvet read FOwnerDraw write FOwnerDraw;
+    constructor Create(AOwner : TComponent); override;
+    Destructor Destroy; override;
+  end;
+
   TJvSliderImages = class;
 
   TJvCustomTrackBar = class(TJvCustomSlider)
@@ -291,7 +311,7 @@ implementation
 
 uses
   Consts, Math,
-  JvJVCLUtils, JvJCLUtils, JvConsts, JvTypes, JvThemes;
+  JvJVCLUtils, JvJCLUtils, JvConsts, JvTypes, JvThemes, Types;
 
 {$R JvxSlider.res}
 
@@ -1296,6 +1316,151 @@ begin
   end;
 end;
 
+
+//koku
+//=== { TJvkxSlider } ==================================================
+
+constructor TJvkxSlider.Create(AOwner : TComponent);
+begin
+  Inherited;
+  FBackground := TBitmap.Create;
+  FBackground.TransparentColor := clFuchsia;
+  FBackground.Transparent := True;
+  //
+end;
+
+Destructor TJvkxSlider.Destroy;
+begin
+  FreeAndNil(FBackground);
+  Inherited;
+end;
+
+procedure TJvkxSlider.WMEraseBkGnd(var Msg: TWMEraseBkgnd);
+begin
+   Msg.Result := 1;
+end;
+
+procedure TJvkxSlider.WMPaint(var Msg: TWMPaint);
+var
+  DC, MemDC: HDC;
+  MemBitmap, OldBitmap: HBITMAP;
+  PS: TPaintStruct;
+begin
+//{
+  if FPaintBuffered then
+    inherited
+  else
+  begin
+    Canvas.Lock;
+    try
+      MemDC := GetDC(HWND_DESKTOP);
+      MemBitmap := CreateCompatibleBitmap(MemDC, ClientWidth, ClientHeight);
+      ReleaseDC(HWND_DESKTOP, MemDC);
+      MemDC := CreateScreenCompatibleDC;
+      OldBitmap := SelectObject(MemDC, MemBitmap);
+      try
+        DC := Msg.DC;
+        Perform(WM_ERASEBKGND, MemDC, MemDC);
+        FPaintBuffered := True;
+        Msg.DC := MemDC;
+        try
+          WMPaint(Msg);
+        finally
+          Msg.DC := DC;
+          FPaintBuffered := False;
+        end;
+        if DC = 0 then
+          DC := BeginPaint(Handle, PS);
+        BitBlt(DC, 0, 0, ClientWidth, ClientHeight, MemDC, 0, 0, SRCCOPY);
+        if Msg.DC = 0 then
+          EndPaint(Handle, PS);
+      finally
+        SelectObject(MemDC, OldBitmap);
+        DeleteDC(MemDC);
+        DeleteObject(MemBitmap);
+      end;
+    finally
+      Canvas.Unlock;
+    end;
+  end;
+//}
+end;
+
+procedure TJvkxSlider.Paint;
+var
+  R: TRect;
+  TopColor, BottomColor, TransColor: TColor;
+  HighlightThumb: Boolean;
+  P: TPoint;
+  Offset: Integer;
+begin
+  if csPaintCopy in ControlState then
+  begin
+    Offset := GetOffsetByValue(GetSliderValue);
+    P := GetThumbPosition(Offset);
+  end
+  else
+    P := Point(FThumbRect.Left, FThumbRect.Top);
+  R := GetClientRect;
+  FBackground.Width := R.Right;
+  FBackground.Height := R.Bottom;
+  if BevelStyle <> bvNone then
+  begin
+    TopColor := clBtnHighlight;
+    if BevelStyle = bvLowered then
+      TopColor := clBtnShadow;
+    BottomColor := clBtnShadow;
+    if BevelStyle = bvLowered then
+      BottomColor := clBtnHighlight;
+    Frame3D(FBackground.Canvas, R, TopColor, BottomColor, FBevelWidth);
+  end;
+  if csOpaque in ControlStyle then
+    DrawThemedBackground(Self, FBackground.Canvas, R, Self.Color);
+  if FRuler.Width > 0 then
+  begin
+    if soRulerOpaque in Options then
+      TransColor := clNone
+    else
+      TransColor := clFuchsia;
+    DrawBitmapTransparent(FBackground.Canvas, FRulerOrg.X, FRulerOrg.Y, FRuler, TransColor);
+  end;
+  if (soShowFocus in Options) and FFocused and
+    not (csDesigning in ComponentState) then
+  begin
+    R := SliderRect;
+    InflateRect(R, -2, -2);
+  end;
+  if soShowPoints in Options then
+  begin
+    if Assigned(FOnDrawPoints) then
+      FOnDrawPoints(Self)
+    else
+      InternalDrawPoints(FBackground.Canvas, Increment, 3, 5);
+  end;
+  if csPaintCopy in ControlState then
+    HighlightThumb := not Enabled
+  else
+    HighlightThumb := FThumbDown or not Enabled;
+  DrawThumb(FBackground.Canvas, P, HighlightThumb);
+  if Assigned(FOwnerDraw) then
+    FOwnerDraw(Canvas, R);
+  DrawTransparency(Canvas, R, FBackground, clFuchsia);
+end;
+
+procedure TJvkxSlider.DrawTransparency(Canvas:TCanvas; ARect : TRect; Bitmap:TBitmap; Transparency: TColor);
+var
+  i,j: Integer;
+  LC : TColor;
+begin
+  for I:= ARect.Left to ARect.Right do
+    for J:=ARect.Top  to ARect.Bottom do
+    begin
+      LC := Bitmap.Canvas.Pixels[I,J];
+      if LC<> Transparency then
+        Canvas.Pixels[I, J] := LC;
+    end;
+end;
+
 //=== { TJvCustomTrackBar } ==================================================
 
 constructor TJvCustomTrackBar.Create(AOwner: TComponent);
@@ -1357,3 +1522,4 @@ finalization
 {$ENDIF UNITVERSIONING}
 
 end.
+
